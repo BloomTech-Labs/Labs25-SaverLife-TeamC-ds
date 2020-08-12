@@ -14,7 +14,7 @@ class Item(BaseModel):
 
     x1: float = Field(..., example=3.14)
     x2: int = Field(..., example=-42)
-    x3: str = Field(..., example='banjo')
+    x3: str = Field(..., example='I changed this variable as a test!')
 
     def to_df(self):
         """Convert pydantic object to pandas dataframe with 1 row."""
