@@ -1,7 +1,7 @@
 {
   "AWSEBDockerrunVersion": "1",
   "Image": {
-	"Name": "michlapdata/labs25-saverlife-c",
+	"Name": "michlapdata/saverlife-c",
     "Update": "true"
   },
   "Ports": [
