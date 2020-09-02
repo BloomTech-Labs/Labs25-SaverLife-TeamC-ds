@@ -3,11 +3,18 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import json
 
-from app.api import dashboard, predict, viz, query
+from app.api import dashboard, utils
+from app.api.utils import SaverlifeUtility
 
-app = FastAPI()
 
+### Load .JSON schema as external file.
+# with open('./app/static/get_redoc.json') as docs_schema:
+#         docs_schema = json.load(docs_file)
+
+
+app = FastAPI(docs_url="/docs", redoc_url="/documentation")
 app.mount("/static", StaticFiles(directory="./app/static"), name="static")
 
 def custom_openapi():
@@ -21,9 +28,11 @@ def custom_openapi():
     )
 
     openapi_schema["info"] = {
-        "description": "Machine learning forecasting straight to your wallet!\n# Introduction\nWelcome to **Saverlife**!\
-            \n# Version\n Sample version.\n# Authentication\n Sample authentication.\n",
         "version": "0.0.1",
+        "description": "Machine learning forecasting straight to your wallets!\n# Introduction\n Welcome to the\
+            **Saverlife** API! We use engaging technologies to inspire, and inform anyone who need help saving Money. \
+            We give the working people the methods and motivation to take control of their financial future.\n# Version\
+            \nVersion 0.0.1",
         "title": "Labs 25 Saverlife-C",
         "termsOfService": "https://www.example.com",
         "contact": {
@@ -56,9 +65,9 @@ app.openapi = custom_openapi
 # )
 
 app.include_router(dashboard.router)
-app.include_router(predict.router)
-app.include_router(viz.router)
-app.include_router(query.router)
+app.include_router(utils.router)
+# app.include_router(predict.router)
+# app.include_router(viz.router)
 
 app.add_middleware(
     CORSMiddleware,
