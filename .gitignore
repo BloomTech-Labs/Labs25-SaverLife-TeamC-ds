@@ -5,6 +5,13 @@
 .vscode
 __pycache__
 
+./Dockerfile
+.dockerignore
+.ebignore
+
+depreciated.md
+
+
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
