@@ -1,9 +1,9 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from utils import STATE_CODE_DICT, USER_ID_DATA, USER_TRANSACTION_DATA
+from utils import STATE_CODE_DICT, query_utility
 
-class Visualize:
+class Visualize():
     """
     Visualize different aspects of synthetic data 
     for SaverLife C Lambda School Labs project
@@ -16,9 +16,22 @@ class Visualize:
     >>> visualize.choropleth_of_users_by_state()
     """
 
-    def __init__(self):
-        self.user_data_df = pd.read_csv(USER_ID_DATA)
-        self.transaction_data_df = pd.read_csv(USER_TRANSACTION_DATA)
+    def __init__(self, user_id: str):
+        #self.user_data_df = pd.read_csv(USER_ID_DATA)
+        #self.transaction_data_df = pd.read_csv(USER_TRANSACTION_DATA)
+        self.user_id = user_id
+        self.user_data_df = self.handle_user_data()
+        self.transaction_data_df = self.handle_transaction_data()
+
+    def handle_user_data(self):
+        user_id = f"'{self.user_id}'"
+        query = f'SELECT * FROM "public"."user_id" WHERE user_id={user_id}'
+        return pd.read_sql("""%s""" % (query), query_utility._conn)
+
+    def handle_transaction_data(self):
+        user_id = f"'{self.user_id}'"
+        query = f'SELECT * FROM "public"."user_transactions" WHERE user_id={user_id}'
+        return pd.read_sql("""%s""" % (query), query_utility._conn)
         
     def choropleth_of_users_by_state(self):
         """
@@ -115,13 +128,12 @@ class Visualize:
 
 
 if __name__ == "__main__":
-    program = Visualize()
+    #program = Visualize(user_id=1704460030)
+    program = Visualize(user_id='1013826851')
     print("Number of users:", program.user_data_df.shape[0], "\nNumber of transactions:",program.transaction_data_df.shape[0])
-    program.choropleth_of_users_by_state()
-    program.time_series_transactions_for_user(1058489442)
-    program.categorized_time_series_transactions_for_user()
-
-
+    # program.choropleth_of_users_by_state()
+    # program.time_series_transactions_for_user(1058489442)
+    # program.categorized_time_series_transactions_for_user()
 
         
         
