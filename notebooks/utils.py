@@ -1,3 +1,34 @@
+import pandas as pd
+import psycopg2
+import plotly.express as px
+from typing import Optional
+import json
+from dotenv import load_dotenv
+from os.path import join, dirname
+import os
+load_dotenv()
+
+class SaverlifeUtility(object):
+    """Main utility class."""
+    def __init__(self):
+        self.model = None
+        self.cursor = self._handle_cursor() 
+
+    def _handle_connection(self):
+        return psycopg2.connect(
+           host=os.getenv("POSTGRES_ADDRESS"),
+           dbname=os.getenv("POSTGRES_DBNAME"),
+           user=os.getenv("POSTGRES_USER"), 
+           password=os.getenv("POSTGRES_PASSWORD"), 
+           port=os.getenv("POSTGRES_PORT")) 
+        
+    def _handle_cursor(self):
+        self._conn = self._handle_connection()
+        self._cur = self._conn.cursor()
+        return self._conn, self._cur
+    
+query_utility = SaverlifeUtility()
+
 STATE_CODE_DICT = {
     'Alaska': 'AK',
      'Alabama': 'AL',
@@ -57,33 +88,3 @@ STATE_CODE_DICT = {
      'West Virginia': 'WV',
      'Wyoming': 'WY'
 }
-
-import pandas as pd
-import psycopg2
-import plotly.express as px
-from typing import Optional
-import json
-from dotenv import load_dotenv
-from os.path import join, dirname
-import os
-load_dotenv()
-class SaverlifeUtility(object):
-    """Main utility class."""
-    def __init__(self):
-        self.model = None
-        self.cursor = self._handle_cursor() 
-
-    def _handle_connection(self):
-        return psycopg2.connect(
-           host=os.getenv("POSTGRES_ADDRESS"),
-           dbname=os.getenv("POSTGRES_DBNAME"),
-           user=os.getenv("POSTGRES_USER"), 
-           password=os.getenv("POSTGRES_PASSWORD"), 
-           port=os.getenv("POSTGRES_PORT")) 
-        
-    def _handle_cursor(self):
-        self._conn = self._handle_connection()
-        self._cur = self._conn.cursor()
-        return self._conn, self._cur
-    
-query_utility = SaverlifeUtility()

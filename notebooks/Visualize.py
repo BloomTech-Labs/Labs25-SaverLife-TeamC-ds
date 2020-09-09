@@ -10,130 +10,95 @@ class Visualize():
     
     Usage:
     # Instantiate the class
-    >>> visualize = Visualize()
+    >>> visualize = Visualize(user_id="A USER ID")
     
     # Plot choropleth map of users by US state
-    >>> visualize.choropleth_of_users_by_state()
+    >>> visualize.categorized_time_series_transactions_for_user()
     """
 
     def __init__(self, user_id: str):
-        #self.user_data_df = pd.read_csv(USER_ID_DATA)
-        #self.transaction_data_df = pd.read_csv(USER_TRANSACTION_DATA)
         self.user_id = user_id
         self.user_data_df = self.handle_user_data()
         self.transaction_data_df = self.handle_transaction_data()
+        self.transaction_time_series_df = self.handle_transaction_timeseries_data()
 
     def handle_user_data(self):
+        """
+        Helper method to filter user data from AWS RDS 
+        PostgreSQL DB for a single user
+        """
+
         user_id = f"'{self.user_id}'"
         query = f'SELECT * FROM "public"."user_id" WHERE user_id={user_id}'
         return pd.read_sql("""%s""" % (query), query_utility._conn)
 
     def handle_transaction_data(self):
+        """
+        Helper method to filter transaction data from AWS RDS 
+        PostgreSQL DB for a single user's transactions
+        """
+
         user_id = f"'{self.user_id}'"
         query = f'SELECT * FROM "public"."user_transactions" WHERE user_id={user_id}'
         return pd.read_sql("""%s""" % (query), query_utility._conn)
-        
-    def choropleth_of_users_by_state(self):
+
+    def handle_transaction_timeseries_data(self):
         """
-        Display user count by US State as a choropleth map
+        Helper method to create transaction time series data
+        from transaction_data
+        """
+
+        self.transactions_time_series_df = self.transaction_data_df.sort_values("date")
+        self.transactions_time_series_df["amount_cents"] = self.transactions_time_series_df["amount_cents"].astype(int)
+        return self.transactions_time_series_df
+
+    def handle_resampling_transaction_timeseries_df(self, frequency):
+        """
+        Helper method to resample transaction timeseries data
+        to a user-specified time frequency
+
+        Args:
+            frequency: a pandas DateOffset, Timedelta or str
+                See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects 
+                for more on dateoffset strings
         
         Returns:
-            Displayed plotly figure
+            resampled_transaction_timeseries
+
+        Usage:
+        # Resample to weekly sum
+        >>> resampled_data = self.handle_resampling_transaction_timeseries_df(offset_string="W")
         """
-        # Prepare data for visualization
-        ### Group users by state
-        self.user_count_by_state = self.user_data_df.groupby("user_location").count().reset_index()
-        ### Rename the column reflecting user count per state
-        self.user_count_by_state.rename(columns={"Unnamed: 0":"user_count"}, 
-                                        inplace=True)
-        ### Add two letter abbreviations for each administrative boundary
-        self.user_count_by_state["code"] = self.user_count_by_state["user_location"].map(STATE_CODE_DICT)
-        # Leverage plotly to build interactive choropleth map
-        self.choropleth_fig = go.Figure(data=go.Choropleth(locations=self.user_count_by_state['code'],
-                                                z=self.user_count_by_state['user_count'].astype(float),
-                                                locationmode='USA-states',
-                                                colorscale='Reds',
-                                                autocolorscale=False,
-                                                text=self.user_count_by_state['user_location'], # hover text
-                                                marker_line_color='white', # line markers between states
-                                                colorbar_title="# of users"))
-        self.choropleth_fig.update_layout(title_text='Generated SaverLife Users',
-                               geo = dict(scope='usa',
-                                          projection=go.layout.geo.Projection(type ='albers usa'),
-                                          showlakes=True,
-                                          lakecolor='rgb(255, 255, 255)'))
-        self.choropleth_fig.show()
-        
-    def time_series_transactions_for_user(self, user_id):
+
+        self.resampled_transaction_timeseries = self.transactions_time_series_df.copy()
+        self.resampled_transaction_timeseries["date"] = pd.to_datetime(self.resampled_transaction_timeseries["date"])
+        self.resampled_transaction_timeseries.set_index("date", inplace=True)
+        return self.resampled_transaction_timeseries.groupby("category_name").resample(frequency).sum().reset_index()
+
+    def categorized_time_series_transactions_for_user(self, offset_string):
         """
-        Display a user's transaction history 
+        Display a user's categorized transaction history 
         
         Args:
-            user_id: Plaid banking user_id
+            user_data: self.transactions_time_series_df or resampled to new datetime offset
+
         Returns:
-            Displays plotly figure
+            plotly line figure in JSON format
         """
-        self.transactions_time_series_df = self.transaction_data_df[self.transaction_data_df["user_id"] == user_id].sort_values("date")
-        fig = go.Figure([go.Scatter(x=self.transactions_time_series_df['date'], 
-                                    y=self.transactions_time_series_df['amount_cents'])])
-        fig.update_xaxes(rangeslider_visible=False,
-                         rangeselector=dict(buttons=list([dict(count=1, label="1m", step="month", stepmode="backward"),
-                                                          dict(count=6, label="6m", step="month", stepmode="backward"),
-                                                          dict(count=1, label="YTD", step="year", stepmode="todate"),
-                                                          dict(count=1, label="1y", step="year", stepmode="backward"),
-                                                          dict(step="all")])))
-        fig.show()
-        
-    def categorized_time_series_transactions_for_user(self):
-        def helper_function_for_trace_visibility(len_array, i):
-            intermediate_array = [False] * len_array
-            intermediate_array[i] = True
-            return intermediate_array
-        
-        df = pd.read_csv("https://raw.githubusercontent.com/plotly/datasets/master/finance-charts-apple.csv")
-        df.columns = [col.replace("AAPL.", "") for col in df.columns]
-        
-        colors_for_traces = px.colors.qualitative.Alphabet
-        columns_of_interest = ["High","Low", "Open", "Close","Adjusted"]
+        if offset_string == None:
+            self.data_for_figure = self.transactions_time_series_df
+        else:
+            self.data_for_figure = self.handle_resampling_transaction_timeseries_df(offset_string)
+
+        colors_for_traces = px.colors.qualitative.Safe
+        columns_of_interest = self.data_for_figure["category_name"].unique().tolist()
         length_of_interest = len(columns_of_interest)
         
         fig = go.Figure()
-
         for i in range(length_of_interest):
-            fig.add_trace(go.Scatter(x=list(df.index),
-                                     y=list(df[columns_of_interest[i]]),
+            fig.add_trace(go.Scatter(x=list(self.data_for_figure[self.data_for_figure["category_name"] == columns_of_interest[i]]["date"]),
+                                     y=list(self.data_for_figure[self.data_for_figure["category_name"] == columns_of_interest[i]]["amount_cents"]),
                                      name=columns_of_interest[i],
                                      line=dict(color=colors_for_traces[i])))
-
-        fig.update_layout(
-            updatemenus=[
-                dict(buttons=list([
-                dict(label="All",
-                             method="update",
-                             args=[{"visible": [True] * length_of_interest},
-                                   {"title": "Yahoo All",
-                                    "annotations": []}])]))])
-
-        fig.update_layout(
-            updatemenus=[
-                dict(buttons=list([
-                        dict(label=columns_of_interest[i],
-                             method="update",
-                             args=[{"visible": helper_function_for_trace_visibility(length_of_interest, i)},
-                                   {"title": "Yahoo {}".format(columns_of_interest[i]),
-                                    "annotations": []}]) for i in range(length_of_interest)]))])
-
-        fig.update_layout(title_text="Yahoo")
-        fig.show()
-
-
-if __name__ == "__main__":
-    #program = Visualize(user_id=1704460030)
-    program = Visualize(user_id='1013826851')
-    print("Number of users:", program.user_data_df.shape[0], "\nNumber of transactions:",program.transaction_data_df.shape[0])
-    # program.choropleth_of_users_by_state()
-    # program.time_series_transactions_for_user(1058489442)
-    # program.categorized_time_series_transactions_for_user()
-
         
-        
+        fig.to_json()
