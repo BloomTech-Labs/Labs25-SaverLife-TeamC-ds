@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from utils import STATE_CODE_DICT, query_utility
+from utils import STATE_CODE_DICT, query_utility 
 
 class Visualize():
     """
@@ -85,6 +85,7 @@ class Visualize():
         Returns:
             plotly line figure in JSON format
         """
+
         if offset_string == None:
             self.data_for_figure = self.transactions_time_series_df
         else:
@@ -102,3 +103,41 @@ class Visualize():
                                      line=dict(color=colors_for_traces[i])))
         
         fig.to_json()
+
+    def most_recent_developer_specified_timeframe_of_transactions(self, timeframe="W"):
+        """
+        Display most recent timeframe of transaction data
+        Defaults to 1W but can be adjusted with args
+
+        Args:
+            timeframe: pandas datetime stampe for reverse sorting data
+
+        Returns:
+            plotly graph object table of recent transactions
+        """
+
+        self.recent_transactions = self.transaction_time_series_df.copy()
+        self.recent_transactions["date"] = pd.to_datetime(self.recent_transactions["date"])
+        self.recent_transactions.set_index("date", inplace=True)
+        self.recent_transactions = self.recent_transactions.last("1{}".format(timeframe)).reset_index()
+        
+        fig = go.Figure(data=[go.Table(
+                            header=dict(values=["Date", 
+                                                "Amount cents", 
+                                                "Category Name"],
+                            fill_color='#91c2de',
+                            align='left'),
+                        cells=dict(values=[self.recent_transactions.date, 
+                                           self.recent_transactions.amount_cents, 
+                                           self.recent_transactions.category_name],
+                        fill_color='#ecb7db',
+                        align='left'))])
+
+        fig.update_layout(title_text="Recent transactions for user {}".format(self.user_id),
+                  title_font_size=30)
+
+        fig.to_json()
+
+if __name__ == "__main__":
+    program = Visualize(user_id='1013826851')
+    program.most_recent_developer_specified_timeframe_of_transactions(timeframe="M")
