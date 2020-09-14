@@ -1,22 +1,4 @@
 # Deprecated Visualize methods kept for reference
-def DEPRECATED_time_series_transactions_for_user(self):
-        """
-        Display a user's transaction history 
-        
-        Returns:
-            plotly line figure in JSON format
-        """
-        
-        fig = go.Figure([go.Scatter(x=self.transactions_time_series_df['date'], 
-                                    y=self.transactions_time_series_df['amount_cents'])])
-        fig.update_xaxes(rangeslider_visible=False,
-                         rangeselector=dict(buttons=list([dict(count=1, label="1m", step="month", stepmode="backward"),
-                                                          dict(count=6, label="6m", step="month", stepmode="backward"),
-                                                          dict(count=1, label="YTD", step="year", stepmode="todate"),
-                                                          dict(count=1, label="1y", step="year", stepmode="backward"),
-                                                          dict(step="all")])))
-        return fig.to_json()
-
     def DEPRECATED_choropleth_of_users_by_state(self):
         """
         Display user count by US State as a choropleth map
@@ -89,3 +71,139 @@ def DEPRECATED_time_series_transactions_for_user(self):
 
         fig.update_layout(title_text="Yahoo")
         fig.show()
+
+def DEPRECATED_handle_transaction_data(self):
+        """
+        Helper method to filter transaction data from AWS RDS 
+        PostgreSQL DB for a single user's transactions
+        """
+
+        user_id = f"'{self.user_id}'"
+        query = f'SELECT * FROM "public"."user_transactions" WHERE user_id={user_id}'
+        return pd.read_sql("""%s""" % (query), query_utility._conn)
+
+def BUGGY_categorized_time_series_transactions_for_user(self, offset_string=None):
+        """
+        Display a user's categorized transaction history 
+        
+        Args:
+            user_data: self.transactions_time_series_df or resampled to new datetime offset
+
+        Returns:
+            plotly line figure in JSON format
+        """
+
+        if offset_string == None:
+            self.data_for_figure = self.transactions_time_series_df
+        else:
+            self.data_for_figure = self.handle_resampling_transaction_timeseries_df(offset_string)
+
+        
+        columns_of_interest = self.data_for_figure["category_id"].unique().tolist()
+        length_of_interest = len(columns_of_interest)
+        colors_for_traces = px.colors.qualitative.Alphabet * (length_of_interest)
+        
+        fig = go.Figure()
+        for i in range(length_of_interest):
+            fig.add_trace(go.Scatter(x=list(self.data_for_figure[self.data_for_figure["category_id"] == columns_of_interest[i]]["date"]),
+                                     y=list(self.data_for_figure[self.data_for_figure["category_id"] == columns_of_interest[i]]["amount_cents"]),
+                                     name=columns_of_interest[i],
+                                     line=dict(color=colors_for_traces[i])))
+        
+        #fig.to_json()
+        fig.write_html("testing_categorized_time_series_transactions.html")
+
+def BUGGY_most_recent_developer_specified_timeframe_of_transactions(self, timeframe="W"):
+        """
+        Display most recent timeframe of transaction data
+        Defaults to 1W but can be adjusted with args
+
+        Args:
+            timeframe: pandas datetime stampe for reverse sorting data
+
+        Returns:
+            plotly graph object table of recent transactions
+        """
+
+        self.recent_transactions = self.transaction_time_series_df.copy()
+        self.recent_transactions["date"] = pd.to_datetime(self.recent_transactions["date"])
+        self.recent_transactions.set_index("date", inplace=True)
+        self.recent_transactions = self.recent_transactions.last("1{}".format(timeframe)).reset_index()
+        
+        fig = go.Figure(data=[go.Table(
+                            header=dict(values=["Date", 
+                                                "Amount cents", 
+                                                "Category Name"],
+                            fill_color='lightgray',
+                            align='left'),
+                        cells=dict(values=[self.recent_transactions.date, 
+                                           self.recent_transactions.amount_cents, 
+                                           self.recent_transactions.category_name],
+                        fill_color='whitesmoke',
+                        align='left'))])
+
+        fig.update_layout(title_text="Recent Transactions: User {}".format(self.user_id),
+                  title_font_size=30)
+
+        fig.to_json()
+        
+        
+STATE_CODE_DICT = {
+    'Alaska': 'AK',
+     'Alabama': 'AL',
+     'Arkansas': 'AR',
+     'American Samoa': 'AS',
+     'Arizona': 'AZ',
+     'California': 'CA',
+     'Colorado': 'CO',
+     'Connecticut': 'CT',
+     'District of Columbia': 'DC',
+     'Delaware': 'DE',
+     'Florida': 'FL',
+     'Georgia': 'GA',
+     'Guam': 'GU',
+     'Hawaii': 'HI',
+     'Iowa': 'IA',
+     'Idaho': 'ID',
+     'Illinois': 'IL',
+     'Indiana': 'IN',
+     'Kansas': 'KS',
+     'Kentucky': 'KY',
+     'Louisiana': 'LA',
+     'Massachusetts': 'MA',
+     'Maryland': 'MD',
+     'Maine': 'ME',
+     'Michigan': 'MI',
+     'Minnesota': 'MN',
+     'Missouri': 'MO',
+     'Northern Mariana Islands': 'MP',
+     'Mississippi': 'MS',
+     'Montana': 'MT',
+     'National': 'NA',
+     'North Carolina': 'NC',
+     'North Dakota': 'ND',
+     'Nebraska': 'NE',
+     'New Hampshire': 'NH',
+     'New Jersey': 'NJ',
+     'New Mexico': 'NM',
+     'Nevada': 'NV',
+     'New York': 'NY',
+     'Ohio': 'OH',
+     'Oklahoma': 'OK',
+     'Oregon': 'OR',
+     'Pennsylvania': 'PA',
+     'Puerto Rico': 'PR',
+     'Rhode Island': 'RI',
+     'South Carolina': 'SC',
+     'South Dakota': 'SD',
+     'Tennessee': 'TN',
+     'Texas': 'TX',
+     'Utah': 'UT',
+     'Virginia': 'VA',
+     'Virgin Islands': 'VI',
+     'Vermont': 'VT',
+     'Washington': 'WA',
+     'Wisconsin': 'WI',
+     'West Virginia': 'WV',
+     'Wyoming': 'WY'
+}
