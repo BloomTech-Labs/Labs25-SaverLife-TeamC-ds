@@ -1,7 +1,6 @@
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
-from utils import STATE_CODE_DICT, query_utility 
+from utils import query_utility
 
 class Visualize():
     """
@@ -12,35 +11,23 @@ class Visualize():
     # Instantiate the class
     >>> visualize = Visualize(user_id="A USER ID")
     
-    # Plot choropleth map of users by US state
-    >>> visualize.categorized_time_series_transactions_for_user()
+    # Plotly table of all transactions for a single user
+    >>> visualize.return_all_transactions_for_user()
     """
 
     def __init__(self, user_id: str):
         self.user_id = user_id
-        self.user_data_df = self.handle_user_data()
-        self.transaction_data_df = self.handle_transaction_data()
+        self.user_transactions_df = self.handle_user_transaction_data()
         self.transaction_time_series_df = self.handle_transaction_timeseries_data()
 
-    def handle_user_data(self):
+    def handle_user_transaction_data(self):
         """
         Helper method to filter user data from AWS RDS 
         PostgreSQL DB for a single user
         """
 
-        user_id = f"'{self.user_id}'"
-        query = f'SELECT * FROM "public"."user_id" WHERE user_id={user_id}'
-        return pd.read_sql("""%s""" % (query), query_utility._conn)
-
-    def handle_transaction_data(self):
-        """
-        Helper method to filter transaction data from AWS RDS 
-        PostgreSQL DB for a single user's transactions
-        """
-
-        user_id = f"'{self.user_id}'"
-        query = f'SELECT * FROM "public"."user_transactions" WHERE user_id={user_id}'
-        return pd.read_sql("""%s""" % (query), query_utility._conn)
+        df = query_utility._generate_dataframe(bank_account_id=self.user_id, table='transactions')
+        return df
 
     def handle_transaction_timeseries_data(self):
         """
@@ -48,7 +35,7 @@ class Visualize():
         from transaction_data
         """
 
-        self.transactions_time_series_df = self.transaction_data_df.sort_values("date")
+        self.transactions_time_series_df = self.user_transactions_df.sort_values("date")
         self.transactions_time_series_df["amount_cents"] = self.transactions_time_series_df["amount_cents"].astype(int)
         return self.transactions_time_series_df
 
@@ -75,35 +62,6 @@ class Visualize():
         self.resampled_transaction_timeseries.set_index("date", inplace=True)
         return self.resampled_transaction_timeseries.groupby("category_name").resample(frequency).sum().reset_index()
 
-    def categorized_time_series_transactions_for_user(self, offset_string):
-        """
-        Display a user's categorized transaction history 
-        
-        Args:
-            user_data: self.transactions_time_series_df or resampled to new datetime offset
-
-        Returns:
-            plotly line figure in JSON format
-        """
-
-        if offset_string == None:
-            self.data_for_figure = self.transactions_time_series_df
-        else:
-            self.data_for_figure = self.handle_resampling_transaction_timeseries_df(offset_string)
-
-        colors_for_traces = px.colors.qualitative.Safe
-        columns_of_interest = self.data_for_figure["category_name"].unique().tolist()
-        length_of_interest = len(columns_of_interest)
-        
-        fig = go.Figure()
-        for i in range(length_of_interest):
-            fig.add_trace(go.Scatter(x=list(self.data_for_figure[self.data_for_figure["category_name"] == columns_of_interest[i]]["date"]),
-                                     y=list(self.data_for_figure[self.data_for_figure["category_name"] == columns_of_interest[i]]["amount_cents"]),
-                                     name=columns_of_interest[i],
-                                     line=dict(color=colors_for_traces[i])))
-        
-        fig.to_json()
-
     def most_recent_developer_specified_timeframe_of_transactions(self, timeframe="W"):
         """
         Display most recent timeframe of transaction data
@@ -124,13 +82,13 @@ class Visualize():
         fig = go.Figure(data=[go.Table(
                             header=dict(values=["Date", 
                                                 "Amount cents", 
-                                                "Category Name"],
-                            fill_color='#91c2de',
+                                                "Category ID"],
+                            fill_color='lightgray',
                             align='left'),
                         cells=dict(values=[self.recent_transactions.date, 
                                            self.recent_transactions.amount_cents, 
-                                           self.recent_transactions.category_name],
-                        fill_color='#ecb7db',
+                                           self.recent_transactions.category_id],
+                        fill_color='whitesmoke',
                         align='left'))])
 
         fig.update_layout(title_text="Recent transactions for user {}".format(self.user_id),
@@ -138,6 +96,27 @@ class Visualize():
 
         fig.to_json()
 
+    def return_all_transactions_for_user(self):
+        
+        fig = go.Figure(data=[go.Table(
+                            header=dict(values=["Date", 
+                                                "Amount cents", 
+                                                "Category ID"],
+                            fill_color='lightgray',
+                            align='left'),
+                        cells=dict(values=[self.transaction_time_series_df.date, 
+                                           self.transaction_time_series_df.amount_cents, 
+                                           self.transaction_time_series_df.category_id],
+                        fill_color='whitesmoke',
+                        align='left'))])
+
+        fig.update_layout(title_text="Transactions: User {}".format(self.user_id),
+                  title_font_size=30)
+
+        fig.to_json()
+
+
 if __name__ == "__main__":
-    program = Visualize(user_id='1013826851')
-    program.most_recent_developer_specified_timeframe_of_transactions(timeframe="M")
+    program = Visualize(user_id=147254)
+    program.return_all_transactions_for_user()
+    program.most_recent_developer_specified_timeframe_of_transactions(pffset_string="M")
