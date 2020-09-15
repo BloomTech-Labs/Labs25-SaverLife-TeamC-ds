@@ -50,7 +50,7 @@ class Visualize():
 
     def return_all_transactions_for_user(self):
         """
-        Plotly Table Object of all transaction for a user
+        Plotly Table Object of all transactions for a user
         Usage:
         # Instantiate the class
         >>> visualize = Visualize(user_id=4923847023975)
@@ -78,14 +78,46 @@ class Visualize():
 
     def categorized_bar_chart_per_month(self):
         """
-        In progress
+        Plotly Bar Chart Object of monthly sum transactions for a user
+        Usage:
+        # Instantiate the class
+        >>> visualize = Visualize(user_id=4923847023975)
+    
+        # Plotly bar chart of monthly sum transactions
+        >>> visualize.categorized_bar_chart_per_month()
         """
+        def helper_function_for_trace_visibility(len_array, i):
+            intermediate_array = [False] * len_array
+            intermediate_array[i] = True
+            return intermediate_array
         self.monthly_sum_transactions_time_series_df = self.handle_resampling_transaction_timeseries_df("M").sort_values("date")
         self.monthly_sum_transactions_time_series_df.drop(columns=["bank_account_id","id","lat","lon"], inplace=True)
-        months_of_interest = self.monthly_sum_transactions_time_series_df.date.dt.strftime('%Y-%m-%d').unique().tolist()
-        first_month_data = self.monthly_sum_transactions_time_series_df[self.monthly_sum_transactions_time_series_df.date.dt.strftime('%Y-%m-%d') == months_of_interest[0]].copy()
-        first_month_data.drop(columns="date", inplace=True)
-        print(first_month_data)
+        months_of_interest = self.monthly_sum_transactions_time_series_df.date.dt.strftime('%Y-%m').unique().tolist()
+        length_of_interest = len(months_of_interest)
+        list_of_monthly_dfs = []
+        for month in months_of_interest:
+            list_of_monthly_dfs.append(self.monthly_sum_transactions_time_series_df[self.monthly_sum_transactions_time_series_df.date.dt.strftime('%Y-%m') == month])
+        fig = go.Figure()
+        for i in range(len(list_of_monthly_dfs)-1):
+            fig.add_trace(go.Bar(x=list(list_of_monthly_dfs[i].category_name), 
+                                 y=list(list_of_monthly_dfs[i].amount_cents), 
+                                 name=str(list_of_monthly_dfs[i].date.dt.strftime('%Y-%m').iloc[0]), 
+                                 visible=False))
+        fig.add_trace(go.Bar(x=list(list_of_monthly_dfs[-1].category_name), 
+                             y=list(list_of_monthly_dfs[-1].amount_cents), 
+                             name=str(list_of_monthly_dfs[-1].date.dt.strftime('%Y-%m').iloc[0]), 
+                             visible=True))
+
+        fig.update_layout(
+            updatemenus=[
+                dict(active=length_of_interest-1, buttons=list([
+                        dict(label=months_of_interest[i],
+                             method="update",
+                             args=[{"visible": helper_function_for_trace_visibility(length_of_interest, i)},
+                                   {"annotations": []}]) for i in range(length_of_interest)]))])
+
+        return fig.to_json()
+
 
 if __name__ == "__main__":
     program = Visualize(user_id=147254)
