@@ -2,6 +2,13 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils import query_utility
 
+import numpy as np
+import matplotlib.pyplot as plt
+from sktime.forecasting.model_selection import temporal_train_test_split
+from sktime.performance_metrics.forecasting import smape_loss
+from sktime.utils.plotting.forecasting import plot_ys
+from sktime.forecasting.naive import NaiveForecaster
+
 class Visualize():
     """
     Visualize different aspects of synthetic data 
@@ -47,6 +54,25 @@ class Visualize():
         self.resampled_transaction_timeseries["date"] = pd.to_datetime(self.resampled_transaction_timeseries["date"])
         self.resampled_transaction_timeseries.set_index("date", inplace=True)
         return self.resampled_transaction_timeseries.groupby("category_name").resample(offset_string).sum().reset_index()
+    
+    def handle_resampling_transaction_timeseries_df_parent_categories(self, offset_string):
+        """
+        Helper method to resample transaction timeseries data
+        to a user-specified time frequency
+        Args:
+            frequency: a pandas DateOffset, Timedelta or str
+                See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects 
+                for more on dateoffset strings
+        Returns:
+            resampled_transaction_timeseries
+        Usage:
+        # Resample to weekly sum
+        >>> resampled_data = self.handle_resampling_transaction_timeseries_df(offset_string="W")
+        """
+        self.resampled_transaction_timeseries = self.transactions_time_series_df.copy()
+        self.resampled_transaction_timeseries["date"] = pd.to_datetime(self.resampled_transaction_timeseries["date"])
+        self.resampled_transaction_timeseries.set_index("date", inplace=True)
+        return self.resampled_transaction_timeseries.groupby("parent_category_name").resample(offset_string).sum().reset_index()[["parent_category_name","date","amount_cents"]]
 
     def return_all_transactions_for_user(self):
         """
@@ -116,9 +142,51 @@ class Visualize():
                              args=[{"visible": helper_function_for_trace_visibility(length_of_interest, i)},
                                    {"annotations": []}]) for i in range(length_of_interest)]))])
 
-        return fig.to_json()
+        fig.write_html("testing_barchars.html")
+
+    def next_month_forecast(self):
+        """
+        Forecast next month's transactions based on historical transactions
+
+        Caveats:
+            Only forecasts for parent_categories for which 
+            there are at least 12 months of observations available
+
+        Returns:
+            Dictionary of forecasts, with parent_category_name 
+            as key and forecasted amount_cents as value
+        
+        Usage:
+            # Instantiate the class
+        >>> visualize = Visualize(user_id=45153)
+    
+        # Forecast transactiosn for next month
+        >>> visualize.next_month_forecast()
+        """
+        # Resample to monthly sum per parent_category_name
+        self.monthly_parent_category_total = self.handle_resampling_transaction_timeseries_df_parent_categories("M")
+        # Filter for parent_categories with at least 12 months of data
+        self.df12 = self.monthly_parent_category_total[self.monthly_parent_category_total['parent_category_name'].map(self.monthly_parent_category_total['parent_category_name'].value_counts()) > 12]
+        # Container to store forecasting results
+        self.forecasting_results = {}
+        # Loop through each parent category and forecast month ahead with Naive Baseline
+        for parent_cat in self.df12.parent_category_name.unique().tolist():
+            # Select relevant transaction data for training the model
+            y = self.df12[self.df12.parent_category_name == parent_cat]["amount_cents"]
+            # Set forecasting horizon
+            fh = np.arange(len(y)) + 1
+            # Initialize a forecaster, seasonal periodicity of 12 (months per year)
+            forecaster = NaiveForecaster(strategy="seasonal_last", sp=12)
+            # Fit forecaster to training data
+            forecaster.fit(y)
+            # Forecast prediction to match size of forecasting horizon
+            y_pred = forecaster.predict(fh)
+            # Store results in a dictionary
+            self.forecasting_results[parent_cat] = y_pred.values[0]
+        # Return the results for use in other parts of app
+        return self.forecasting_results
 
 
 if __name__ == "__main__":
-    program = Visualize(user_id=147254)
-    program.categorized_bar_chart_per_month()
+    program = Visualize(user_id=45153)
+    program.next_month_forecast()
