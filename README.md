@@ -7,7 +7,7 @@
 
 # Saverlife Data Science Team C
 
-[Website!](https://feel-good-cabinet.herokuapp.com/home)
+[Website!](http://saverlife-c.eba-swb5qwdy.us-east-1.elasticbeanstalk.com)
 
 * [Saverlife](#saverlife)
     * [Overview](#project-overview)
