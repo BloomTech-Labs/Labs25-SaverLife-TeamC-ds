@@ -148,7 +148,7 @@ class Visualize():
 
         fig.write_html("testing_barchars.html")
 
-    def next_month_forecast(self, model="knn"):
+    def next_month_forecast(self, model="kNeighbors"):
         """
         Forecast next month's transactions based on historical transactions
 
@@ -180,7 +180,7 @@ class Visualize():
             # Set forecasting horizon
             fh = np.arange(len(y)) + 1 
             # Initialize a forecaster, seasonal periodicity of 12 (months per year)   
-            if model == "naive":
+            if model == "Naive":
                 forecaster = NaiveForecaster(strategy="seasonal_last", sp=12)
             else:
                 regressor = KNeighborsRegressor(n_neighbors=1)
@@ -197,5 +197,5 @@ class Visualize():
     
 if __name__ == "__main__":
     program = Visualize(user_id=45153)
-    for model in ["knn","naive"]:
+    for model in ["kNeighbors","Naive"]:
         program.next_month_forecast(model=model)
