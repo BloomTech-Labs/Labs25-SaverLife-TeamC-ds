@@ -8,6 +8,10 @@ from sktime.forecasting.model_selection import temporal_train_test_split
 from sktime.performance_metrics.forecasting import smape_loss
 from sktime.utils.plotting.forecasting import plot_ys
 from sktime.forecasting.naive import NaiveForecaster
+from sktime.forecasting.compose import ReducedRegressionForecaster
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import RandomForestRegressor
+
 
 class Visualize():
     """
@@ -144,7 +148,7 @@ class Visualize():
 
         fig.write_html("testing_barchars.html")
 
-    def next_month_forecast(self):
+    def next_month_forecast(self, model="knn"):
         """
         Forecast next month's transactions based on historical transactions
 
@@ -174,9 +178,13 @@ class Visualize():
             # Select relevant transaction data for training the model
             y = self.df12[self.df12.parent_category_name == parent_cat]["amount_cents"]
             # Set forecasting horizon
-            fh = np.arange(len(y)) + 1
-            # Initialize a forecaster, seasonal periodicity of 12 (months per year)
-            forecaster = NaiveForecaster(strategy="seasonal_last", sp=12)
+            fh = np.arange(len(y)) + 1 
+            # Initialize a forecaster, seasonal periodicity of 12 (months per year)   
+            if model == "naive":
+                forecaster = NaiveForecaster(strategy="seasonal_last", sp=12)
+            else:
+                regressor = KNeighborsRegressor(n_neighbors=1)
+                forecaster = ReducedRegressionForecaster(regressor=regressor, window_length=12, strategy="recursive")        
             # Fit forecaster to training data
             forecaster.fit(y)
             # Forecast prediction to match size of forecasting horizon
@@ -186,7 +194,8 @@ class Visualize():
         # Return the results for use in other parts of app
         return self.forecasting_results
 
-
+    
 if __name__ == "__main__":
     program = Visualize(user_id=45153)
-    program.next_month_forecast()
+    for model in ["knn","naive"]:
+        program.next_month_forecast(model=model)
