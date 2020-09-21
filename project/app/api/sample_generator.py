@@ -312,24 +312,7 @@ class sampleGenerator():
         if wave is "outlier":
             for i in bias:
                 array[i] =+ 5
-    
 
-        # if update is False:
-        #     tmin, tmax = 0, 10
-        #     amin, amax = min(array), max(array)
-        #     for i, val in enumerate(array):
-        #         array[i] = round(((val - amin)/(amax - amin)) * (tmax - tmin) + tmin, 3)
-
-        # if update is True:
-        #     array_update = self.wave_constructor(wave=wave)
-        #     for i, val in enumerate(array_update):
-        #         array[i] = array[i] + val
-
-        # tmin, tmax = 0, 10
-        # amin, amax = min(array), max(array)
-        # for i, val in enumerate(array):
-        #     array[i] = round(((val - amin)/(amax - amin)) * (tmax - tmin) + tmin, 3)
- 
         return array
 
                 

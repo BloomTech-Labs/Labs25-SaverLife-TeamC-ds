@@ -46,7 +46,7 @@ def custom_openapi():
             "backgroundColor": "#FAFAFA"
         },
         "license": {
-            "name": "MIT",
+            "name": "MIT License",
             "url": "https://opensource.org/licenses/MIT"
         }
     }
@@ -66,8 +66,6 @@ app.openapi = custom_openapi
 
 app.include_router(dashboard.router)
 app.include_router(utils.router)
-# app.include_router(predict.router)
-# app.include_router(viz.router)
 
 app.add_middleware(
     CORSMiddleware,
