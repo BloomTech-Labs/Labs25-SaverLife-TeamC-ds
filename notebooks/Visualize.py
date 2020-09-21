@@ -205,15 +205,16 @@ class Visualize():
         months_to_end_date = (self.end_date - self.today)/pd.Timedelta(weeks=4)
         return months_to_end_date
 
-    def handle_savings_goal(self, goal):
-        return goal
-
     def prepare_budget_recommendation(self, end_year=(pd.Timestamp.today() + pd.Timedelta(weeks=78)).year, end_month=(pd.Timestamp.today() + pd.Timedelta(weeks=78)).month, goal=400):
-        desired_months_until_goal_is_reached = self.handle_savings_goal_end_date(end_year, end_month)
-        monthly_total = self.calculate_monthly_total() / 100
-        savings_goal = self.handle_savings_goal(goal)
-        savings_rate = savings_goal / desired_months_until_goal_is_reached
-        return f"To reach your savings goal of ${savings_goal} by {self.end_date.strftime('%Y-%m')}, you should aim to save ${int(savings_rate + 1)} next month. We anticipate your net monthly expenses to be approximately ${int(monthly_total)}."
+        budget_recommendation = {}
+        budget_recommendation["user_id"] = self.user_id
+        budget_recommendation["end_year"] = end_year
+        budget_recommendation["end_month"] = end_month
+        budget_recommendation["savings_goal"] = goal
+        budget_recommendation["months_from_today_to_reach_savings_goal"] = self.handle_savings_goal_end_date(end_year, end_month)
+        budget_recommendation["next_month_transactions_forecast_sum"] =  self.calculate_monthly_total() / 100
+        budget_recommendation["suggested_monthly_savings_rate"] = budget_recommendation["savings_goal"] / budget_recommendation["months_from_today_to_reach_savings_goal"]
+        return budget_recommendation
 
 if __name__ == "__main__":
     program = Visualize(user_id=45153)
