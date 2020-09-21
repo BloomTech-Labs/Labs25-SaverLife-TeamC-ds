@@ -212,7 +212,7 @@ class Visualize():
         budget_recommendation["end_month"] = end_month
         budget_recommendation["savings_goal"] = goal
         budget_recommendation["months_from_today_to_reach_savings_goal"] = self.handle_savings_goal_end_date(end_year, end_month)
-        budget_recommendation["next_month_transactions_forecast_sum"] =  self.calculate_monthly_total() / 100
+        budget_recommendation["next_month_transactions_forecast_sum"] =  self.calculate_monthly_total()
         budget_recommendation["suggested_monthly_savings_rate"] = budget_recommendation["savings_goal"] / budget_recommendation["months_from_today_to_reach_savings_goal"]
         return budget_recommendation
 
