@@ -22,6 +22,12 @@ SaverLife (formerly EARN) is a nonprofit on a mission — to inspire, inform, an
 
 Money is hard to manage. How can we properly predict our budget and our upcoming expense? We will create an application that takes a user's past financial data and creates a predicted budget.
 
+### Project Description
+- We trained a k-nearest neighbors regression model on past transaction data to forecast next-month transactions for a user. Forecasting results are summed to provide a single monthly total estimate for budget planning, but the algorithm predicts next month totals individually for each transaction category. The near real-time user transaction data are resampled to monthly totals as part of data pre-processing. Likewise, transaction categories which appear in fewer than 12 months of a user’s transaction records are excluded from the prediction task.
+
+- The aforementioned model provides general-purpose insights into one’s next month's budget. Currently, we also provide a monthly savings rate ($/month) based on user-specified goals. A future product release will contain transaction category-specific monthly savings recommendations to further assist users with their goals. 
+
+
 ### Data Science Stack
 
 #### Amazon Web Services:
