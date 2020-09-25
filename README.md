@@ -2,7 +2,7 @@
 [![Test Coverage](https://api.codeclimate.com/v1/badges/fa3fc0912abcb80056d3/test_coverage)](https://codeclimate.com/github/Lambda-School-Labs/Groa-be/test_coverage)
 
 <div align="center">
-  <img src="https://github.com/Lambda-School-Labs/Labs25-SaverLife-TeamC-ds/blob/main/project/app/static/images/saverlife-banner.png"><br>
+  <img src="https://github.com/Lambda-School-Labs/Labs25-SaverLife-TeamC-ds/blob/main/project/app/static/images/saverlife_banner.png"><br>
 </div>
 
 # Saverlife Data Science Team C

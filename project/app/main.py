@@ -3,26 +3,21 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import json
 
-from app.api import dashboard, utils
-from app.api.utils import SaverlifeUtility
-
-
-### Load .JSON schema as external file.
-# with open('./app/static/get_redoc.json') as docs_schema:
-#         docs_schema = json.load(docs_file)
+from app.api import dashboard, endpoints
+from app.api.utils import SaverlifeUtility, SaverlifeVisual
 
 
 app = FastAPI(docs_url="/docs", redoc_url="/documentation")
 app.mount("/static", StaticFiles(directory="./app/static"), name="static")
+
 
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
     openapi_schema = get_openapi(
         title='Labs 25 Saverlife-C',
-        version='0.0.1',
+        version='1.0.0',
         openapi_version='3.0.2',
         routes=app.routes
     )
@@ -41,7 +36,7 @@ def custom_openapi():
             "url": "https://github.com/orgs/Lambda-School-Labs/teams/labs25-saverlife-teamc/repositories"
         },
         "x-logo": {
-            "url": "https://raw.githubusercontent.com/Lambda-School-Labs/Labs25-SaverLife-TeamC-ds/aws-testing/project/app/static/img/saverlife.png",
+            "url": "https://github.com/Lambda-School-Labs/Labs25-SaverLife-TeamC-ds/blob/main/project/app/static/images/saverlife_logo.png",
             "altText: Saverlife logo"
             "backgroundColor": "#FAFAFA"
         },
@@ -53,19 +48,11 @@ def custom_openapi():
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
-    
+
 app.openapi = custom_openapi
 
-### Standard app creation
-# app = FastAPI(
-#     title='Labs 25 Saverlife-C',
-#     version='0.0.1',
-#     description='Machine Learning straight to your pockets.',
-#     docs_url='/',
-# )
-
+app.include_router(endpoints.router)
 app.include_router(dashboard.router)
-app.include_router(utils.router)
 
 app.add_middleware(
     CORSMiddleware,

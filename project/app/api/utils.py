@@ -32,7 +32,6 @@ from app.api.basemodels import User, GraphRequest
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
-
 router = APIRouter()
 templates = Jinja2Templates(directory="./app/static/dist")
 
@@ -44,7 +43,7 @@ class SaverlifeUtility(object):
 
 
     def _handle_connection(self):
-        """Connect to a database."""
+        """Support method to handle database connection."""
         return psycopg2.connect(
            host=os.getenv('POSTGRES_ADDRESS_EXTERNAL'),
            dbname=os.getenv('POSTGRES_DBNAME_EXTERNAL'),
@@ -54,7 +53,11 @@ class SaverlifeUtility(object):
         )
 
     def _handle_cursor(self):
-        """Create a cursor to perform database operations."""
+        """Create a cursor to perform database operations.
+        
+        Examples:
+        >>> con, cur = self._handle_cursor()
+        """
         conn = self._handle_connection()
 
         cur = conn.cursor()
@@ -62,7 +65,10 @@ class SaverlifeUtility(object):
         return conn, cur
     
     def handle_query(self, query: str, fetchone: bool = False):
-        """Handle simple query operations."""
+        """Handle simple query operations.
+        
+        Examples:
+        >>> self.handle_query(query)"""
         try:
             conn, cur = self._handle_cursor()
             cur.execute(query)
@@ -73,7 +79,7 @@ class SaverlifeUtility(object):
                 if fetchone is True:
                     try:
                         result = cur.fetchone()
-                    except ProgrammingError:
+                    except BaseException:
                         result = None
                 else:
                     result = cur.fetchall()
@@ -81,41 +87,41 @@ class SaverlifeUtility(object):
                 conn.close()
         return result
 
-    def _generate_dataframe(self, table: str, bank_account_id: str = None, sample_size: int = 1):
-        """Support utility function to handle database manipulation and other miscellaneous functions."""
+    def generate_dataframe(self, table: str, bank_account_id: str = None, sample_size: int = 1):
+        """Support function to handle database manipulation and other miscellaneous functions."""
         df = None
 
         if table is 'transactions':
-            df = self._configure_transactions_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
+            df = self.configure_transactions_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
         if table is 'accounts':
-            df = self._configure_accounts_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
+            df = self.configure_accounts_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
         if table is 'requests':
-            df = self._configure_requests_dataframe()
+            df = self.configure_requests_dataframe()
         
         return df
 
-    def _configure_transactions_dataframe(self, bank_account_id: str, sample_size: int = 1):
-        df = self._fetch_transactions_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
+    def configure_transactions_dataframe(self, bank_account_id: str, sample_size: int = 1):
+        df = self.fetch_transactions_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
         
-        df = self._wrangle_transactions(df)
-
-        return df
-    
-    def _configure_accounts_dataframe(self, bank_account_id: str, sample_size: int = 1):
-        df = self._fetch_accounts_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
-        
-        df = self._wrangle_accounts(df)
+        df = self.wrangle_transactions(df)
 
         return df
     
-    def _configure_requests_dataframe(self):
-        df = self._fetch_requests_dataframe()
+    def configure_accounts_dataframe(self, bank_account_id: str, sample_size: int = 1):
+        df = self.fetch_accounts_dataframe(bank_account_id=bank_account_id, sample_size=sample_size)
+        
+        df = self.wrangle_accounts(df)
+
+        return df
+    
+    def configure_requests_dataframe(self):
+        df = self.fetch_requests_dataframe()
         
         df = self._wrangle_requests(df)
 
         return df
     
-    def _handle_category_features(self, debug: bool = False):
+    def handle_category_features(self, debug: bool = False):
         """Parse user category features from lists to a nested list for dataframe.
         
         Args:
@@ -157,7 +163,7 @@ class SaverlifeUtility(object):
         else:
             return df
 
-    def _fetch_transactions_dataframe(self, bank_account_id: str = None, sample_size: int = 1):
+    def fetch_transactions_dataframe(self, bank_account_id: str = None, sample_size: int = 1):
         random_list = []
         feature_list = []
 
@@ -223,7 +229,7 @@ class SaverlifeUtility(object):
 
         return df
 
-    def _wrangle_transactions(self, x):
+    def wrangle_transactions(self, x):
         """Wrangle incoming transaction data."""
         # Prevent SettingWithCopyWarning
         X = x.copy()
@@ -247,13 +253,13 @@ class SaverlifeUtility(object):
         X['amount'] = (X['amount'] / 100).round(2)
         
         # insert category data
-        df = self._handle_category_features()
+        df = self.handle_category_features()
         
         X = pd.merge(X, df, on='category_id')
 
         return X
 
-    def _fetch_accounts_dataframe(self, bank_account_id: str = None, sample_size: int = 1):
+    def fetch_accounts_dataframe(self, bank_account_id: str = None, sample_size: int = 1):
         random_list = []
         feature_list = []
         
@@ -303,12 +309,12 @@ class SaverlifeUtility(object):
 
         return df
     
-    def _wrangle_accounts(self, x):
+    def wrangle_accounts(self, x):
         X = x.copy()
         
         return X
 
-    def _fetch_requests_dataframe(self):
+    def fetch_requests_dataframe(self):
         feature_list = []
         
         primary_features = [
@@ -336,16 +342,15 @@ class SaverlifeUtility(object):
         
         return X
 
-SaverlifeUtility = SaverlifeUtility()
 
-
-class Visualize():
+class SaverlifeVisual():
     """
     Visualize different aspects of user data 
     for SaverLife C Lambda School Labs project
     """
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str = None):
         self.user_id = user_id
+        self.utility = SaverlifeUtility()
         self.user_transactions_df = self.handle_user_transaction_data()
         self.transaction_time_series_df = self.handle_transaction_timeseries_data()
 
@@ -353,7 +358,7 @@ class Visualize():
         """
         Helper method to filter user data from SaverLife DB 
         """
-        df = SaverlifeUtility._generate_dataframe(bank_account_id=self.user_id, table='transactions')
+        df = self.utility.generate_dataframe(bank_account_id=self.user_id, table='transactions')
         return df
 
     def handle_transaction_timeseries_data(self):
@@ -537,96 +542,24 @@ class Visualize():
         # Return the results for use in other parts of app
         return self.forecasting_results
 
+    def calculate_monthly_total(self):
+        forecasted_expenses = self.next_month_forecast()
+        sum_of_forecasts = sum(forecasted_expenses.values())
+        return sum_of_forecasts
 
-@router.post('/dev/requesttesting', tags=["Graph"])
-async def read_user(payload: GraphRequest):
-    """
-    Returns a visual table or graph according to input parameters.
-    """
+    def handle_savings_goal_end_date(self, end_year, end_month):
+        self.end_date = pd.to_datetime(pd.Timestamp(end_year, end_month, 1))
+        self.today = pd.to_datetime(pd.Timestamp.today())
+        months_to_end_date = (self.end_date - self.today)/pd.Timedelta(weeks=4)
+        return months_to_end_date
 
-    user_id = f"{request.user_id}"
-    graph_type = f"{request.graph_type}"
-    start_month = f"{request.start_month}"
-    end_month = f"{request.end_month}"
-
-    return {
-        'message': 'The payload sent in a 200 response.',
-        'payload': {
-            'user_id': user_id,
-            'graph_type': graph_type,
-            'optional[start_month]': start_month,
-            'optional[end_month]': end_month
-        }
-    }
-
-
-@router.post('/dev/requestvisual', tags=["Graph"])
-async def read_user(payload: GraphRequest):
-    """
-    Returns a visual table or graph according to input parameters.
-    """
-    SaverlifeVisual = Visualize(user_id=payload.user_id)
-    
-    if SaverlifeVisual.user_transactions_df.size > 0:
-        pass
-    else: 
-        return {
-            'details': [
-                {
-                    'loc': [
-                        'internal',
-                        'dataframe'
-                    ],
-                    'msg': 'dataframe size 0, possible invalid user_id',
-                    'type': 'internal'
-                }
-            ]
-        }
-    
-    def _parse_graph(graph_type=payload.graph_type):
-        if graph_type == 'TransactionTable':
-            fig = SaverlifeVisual.return_all_transactions_for_user()
-        if graph_type == 'CategoryBarMonth':
-            fig = SaverlifeVisual.categorized_bar_chart_per_month()
-        
-        return fig
-
-    return _parse_graph()
-
-
-@router.get('/dev/forecast/', tags=['Forecast'])
-async def return_forecast(payload: Optional[User] = None, user_id: Optional[str] = None):
-    """
-    Returns a dictionary forecast.
-    """
-    if payload:
-        SaverlifeVisual = Visualize(user_id=payload.user_id)
-    else:
-        SaverlifeVisual = Visualize(user_id=user_id)
-
-    forecast = SaverlifeVisual.next_month_forecast()
-
-    cache = {}
-    for key, value in forecast.items():
-        cache[str(key)] = int(value)
-        
-    if forecast:
-        return cache
-    else: 
-        return {
-            'details': [
-                {
-                    'loc': [
-                        'internal',
-                        'model'
-                    ],
-                    'msg': 'dictionary size 0, possible too few model observations.',
-                    'doc': {
-                        'description': "Forecast next month's transactions based on historical transactions.",
-                        'caveats': "Only forecasts for parent_categories for which there are at least 12 months of observations available",
-                        'returns': "Dictionary of forecasts, with parent_category_name as key and forecasted amount_cents as value"
-                    },
-                    'type': 'internal'
-                }
-            ]
-        }
+    def prepare_budget_recommendation(self, end_year=(pd.Timestamp.today() + pd.Timedelta(weeks=78)).year, end_month=(pd.Timestamp.today() + pd.Timedelta(weeks=78)).month, goal=400):
+        budget_recommendation = {}
+        budget_recommendation["user_id"] = self.user_id
+        budget_recommendation["end_year"] = end_year
+        budget_recommendation["end_month"] = end_month
+        budget_recommendation["savings_goal"] = goal
+        budget_recommendation["months_from_today_to_reach_savings_goal"] = self.handle_savings_goal_end_date(end_year, end_month)
+        budget_recommendation["next_month_transactions_forecast_sum"] =  self.calculate_monthly_total()
+        budget_recommendation["suggested_monthly_savings_rate"] = budget_recommendation["savings_goal"] / budget_recommendation["months_from_today_to_reach_savings_goal"]
+        return budget_recommendation

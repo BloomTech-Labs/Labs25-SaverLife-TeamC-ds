@@ -12,14 +12,6 @@ import random
 import sys
 import traceback
 
-from sktime.forecasting.model_selection import temporal_train_test_split
-from sktime.performance_metrics.forecasting import smape_loss
-from sktime.utils.plotting.forecasting import plot_ys
-from sktime.forecasting.naive import NaiveForecaster
-from sktime.forecasting.compose import ReducedRegressionForecaster
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.ensemble import RandomForestRegressor
-
 import plotly.graph_objects as go
 
 from dotenv import load_dotenv
@@ -29,21 +21,83 @@ import os
 from app.api.utils import SaverlifeUtility, SaverlifeVisual
 from app.api.basemodels import User, GraphRequest
 
-router = APIRouter()
-templates = Jinja2Templates(directory="./app/static/dist")
-
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
+router = APIRouter()
+templates = Jinja2Templates(directory="./app/static/dist")
 
 
-
-@router.post('/dev/requesttesting', tags=["Graph"])
+@router.post('/dev/requestvisual', tags=["Graph"])
 async def read_user(payload: GraphRequest):
-    """
-    Returns a visual table or graph according to input parameters.
-    """
+    """Saverlife C account graph generation route
+        
+    ### Status
+    #### *Deployed!*
 
+    ### Get
+    #### Secondary index point used for development and testing purposes
+    -   **description**: 
+        -   copy of the primary index point serving as a staging environment
+    
+    -   **parameters**:
+        -   **name**: GraphRequest
+        -   **in**: payload
+        -   **description**: payload that includes a user identification number and a graph type from a valid list.
+        -   **required**: *true*
+    
+    -   **responses**:
+        - **200**:
+            - success
+            - **schema**: *none*
+        - **404**:
+            - not found
+    """  
+    visual = SaverlifeVisual(user_id=payload.user_id)
+    
+    # invalid user_id handling
+    if visual.user_transactions_df.size > 0:
+        raise HTTPException(
+            status_code=500,
+            detail="internal dataframe size 0, this is likely due to an invalid user id"
+        )
+
+    def _parse_graph(graph_type=payload.graph_type):
+        if graph_type == 'TransactionTable':
+            fig = visual.return_all_transactions_for_user()
+        if graph_type == 'CategoryBarMonth':
+            fig = visual.categorized_bar_chart_per_month()
+        
+        return fig
+
+    return _parse_graph()
+
+
+@router.post('/dev/requestvisual/payload', tags=["Graph"])
+async def read_user(payload: GraphRequest):
+    """Developer payload testing route
+    
+    ### Status
+    #### *Deployed!*
+
+    ### Get
+    #### Secondary post point used for development and testing purposes
+    -   **description**: 
+        -   staging route that returns the body of the request.
+    
+    -   **parameters**:
+        -   **name**: GraphRequest
+        -   **in**: payload
+        -   **description**: payload that includes a user identification number and a graph type from a valid list.
+        -   **required**: *true*
+    
+    -   **responses**:
+        - **200**:
+            - success
+            - **schema**: *none*
+        - **404**:
+            - not found
+    """
     user_id = f"{request.user_id}"
     graph_type = f"{request.graph_type}"
     start_month = f"{request.start_month}"
@@ -60,48 +114,43 @@ async def read_user(payload: GraphRequest):
     }
 
 
-@router.post('/dev/requestvisual', tags=["Graph"])
-async def read_user(payload: GraphRequest):
-    """
-    Returns a visual table or graph according to input parameters.
-    """
-    SaverlifeVisual = Visualize(user_id=payload.user_id)
-    
-    if SaverlifeVisual.user_transactions_df.size > 0:
-        pass
-    else: 
-        return {
-            'details': [
-                {
-                    'loc': 'pandas dataframe',
-                    'msg': 'dataframe size 0, possible invalid user_id',
-                    'type': 'internal'
-                }
-            ]
-        }
-    
-    def _parse_graph(graph_type=payload.graph_type):
-        if graph_type == 'TransactionTable':
-            fig = SaverlifeVisual.return_all_transactions_for_user()
-        if graph_type == 'CategoryBarMonth':
-            fig = SaverlifeVisual.categorized_bar_chart_per_month()
-        
-        return fig
-
-    return _parse_graph()
-
-
 @router.get('/dev/forecast/', tags=['Forecast'])
 async def return_forecast(payload: Optional[User] = None, user_id: Optional[str] = None):
-    """
-    Returns a dictionary forecast.
+    """Saverlife C transaction forecast route
+    
+    ### Status
+    #### *Deployed!*
+
+    ### Get
+    #### Secondary post point used for development and testing purposes
+    -   **description**: 
+        -   staging route that returns the body of the request.
+    
+    -   **parameters**:
+        -   **name**: GraphRequest
+        -   **in**: payload
+        -   **description**: payload that includes a user identification number and a graph type from a valid list
+        -   **required**: *true*
+        
+    - **path parameters**:
+        - **name**: user_id
+        - **in**: path
+        - **description**: user identification number path parameter
+        - **required**: *false*
+    
+    -   **responses**:
+        - **200**:
+            - success
+            - **schema**: *none*
+        - **404**:
+            - not found
     """
     if payload:
-        SaverlifeVisual = Visualize(user_id=payload.user_id)
+        visual = SaverlifeVisual(user_id=payload.user_id)
     else:
-        SaverlifeVisual = Visualize(user_id=user_id)
+        visual = SaverlifeVisual(user_id=user_id)
 
-    forecast = SaverlifeVisual.next_month_forecast()
+    forecast = visual.next_month_forecast()
 
     cache = {}
     for key, value in forecast.items():
@@ -110,62 +159,53 @@ async def return_forecast(payload: Optional[User] = None, user_id: Optional[str]
     if forecast:
         return cache
     else: 
-        return {
-            'details': [
-                {
-                    'loc': [
-                        'internal',
-                        'model'
-                    ],
-                    'msg': 'return dictionary size null, possible too few model observations.',
-                    'doc': {
-                        'description': "Forecast next month's transactions based on historical transactions.",
-                        'caveats': "Only forecasts for parent_categories for which there are at least 12 months of observations available",
-                        'returns': "Dictionary of forecasts, with parent_category_name as key and forecasted amount_cents as value"
-                    },
-                    'type': 'internal'
-                }
-            ]
-        }
-        
+        # invalid observation count handling
+        raise HTTPException(
+            status_code=500,
+            detail="internal dataframe size 0, this is likely due from having too few model observations"
+        )
+
+
 @router.get('/dev/forecast/statement/', tags=['Forecast']) #
 async def return_forecast(payload: Optional[User] = None, user_id: Optional[int] = None, end_year: Optional[int] = None, end_month: Optional[int] = None, goal: Optional[int] = None):
-    """
-    Returns a dictionary forecast.
+    """Developer payload testing route
+    
+    ### Status
+    #### *Deployed!*
+
+    ### Get
+    #### Secondary post point used for development and testing purposes
+    -   **description**: 
+        -   staging route that returns the body of the request.
+    
+    -   **parameters**:
+        -   **name**: GraphRequest
+        -   **in**: payload
+        -   **description**: payload that includes a user identification number and a graph type from a valid list
+        -   **required**: *true*
+        
+    - **path parameters**:
+        - **name**: user_id
+        - **in**: path
+        - **description**: user identification number path parameter
+        - **required**: *false*
+    
+    -   **responses**:
+        - **200**:
+            - success
+            - **schema**: *none*
+        - **404**:
+            - not found
     """
     if payload:
-        SaverlifeVisual = Visualize(user_id=payload.user_id)
-        forecast = SaverlifeVisual.prepare_budget_recommendation()
+        visual = SaverlifeVisual(user_id=payload.user_id)
+        forecast = visual.prepare_budget_recommendation()
     else:
-        SaverlifeVisual = Visualize(user_id=user_id)
-        forecast = SaverlifeVisual.prepare_budget_recommendation(end_year=end_year, end_month=end_month, goal=goal)
+        visual = SaverlifeVisual(user_id=user_id)
+        forecast = visual.prepare_budget_recommendation(end_year=end_year, end_month=end_month, goal=goal)
 
     cache = {}
     for key, value in forecast.items():
         cache[str(key)] = int(value)
 
     return cache
-    # cache = {}
-    # for key, value in forecast.items():
-    #     cache[str(key)] = int(value)
-        
-    # if forecast:
-    #     return cache
-    # else: 
-    #     return {
-    #         'details': [
-    #             {
-    #                 'loc': [
-    #                     'internal',
-    #                     'model'
-    #                 ],
-    #                 'msg': 'dictionary size 0, possible too few model observations.',
-    #                 'doc': {
-    #                     'description': "Forecast next month's transactions based on historical transactions.",
-    #                     'caveats': "Only forecasts for parent_categories for which there are at least 12 months of observations available",
-    #                     'returns': "Dictionary of forecasts, with parent_category_name as key and forecasted amount_cents as value"
-    #                 },
-    #                 'type': 'internal'
-    #             }
-    #         ]
-    #     }
