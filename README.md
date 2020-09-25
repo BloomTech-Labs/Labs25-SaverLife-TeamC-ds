@@ -22,6 +22,8 @@ SaverLife (formerly EARN) is a nonprofit on a mission — to inspire, inform, an
 
 Money is hard to manage. How can we properly predict our budget and our upcoming expense? We will create an application that takes a user's past financial data and creates a predicted budget.
 
+Here's a quick video presentation to get you started: https://youtu.be/VTn3yK6lOGk
+
 ### Data Science Stack
 
 #### Amazon Web Services:
