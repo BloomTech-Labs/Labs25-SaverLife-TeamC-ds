@@ -1,4 +1,4 @@
-fastapi==0.60.1
+fastapi==0.65.2
 pandas==1.1.0
 plotly==4.5.3
 uvicorn==0.11.8
